@@ -1,0 +1,79 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lola Palupulo Slots</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              // More realistic, metallic / casino-like colors
+              slotBg: '#2a0a4a',       // Deep Royal Purple / Dark Magenta
+              slotAccent: '#7a00a3',   // Medium-dark purple accent
+              slotText: '#FFD700',     // Gold
+              slotButton: '#CC0000',   // Classic Red for SPIN
+              slotButtonHover: '#990000',
+              slotButtonActive: '#660000',
+              slotFrame: '#DAA520',    // Goldenrod for frame
+              slotIndicator: '#FFFFFF', // White for payline indicator
+              slotReelBg: '#222222',    // Dark grey for reel background
+              slotWin: '#00FF00',      // Bright Green for win message
+              slotBet: '#FFD700',      // Gold for bet display
+              slotCreditBg: '#000000', // Black for credit display
+              slotOffBlack: '#1a1a1a', // Off-black for general dark backgrounds
+            },
+            fontFamily: {
+              'display': ['"Press Start 2P"', 'cursive'],
+              'sans': ['Roboto', 'Arial', 'sans-serif'],
+            },
+            keyframes: {
+              confetti: {
+                '0%': { transform: 'translateY(-100vh) rotate(0deg)', opacity: '0' },
+                '100%': { transform: 'translateY(100vh) rotate(720deg)', opacity: '1' },
+              },
+              blink: {
+                '0%, 100%': { opacity: '1' },
+                '50%': { opacity: '0' },
+              },
+              pulseRed: {
+                '0%, 100%': { boxShadow: '0 0 0px 0px rgba(204, 0, 0, 0.7)' },
+                '50%': { boxShadow: '0 0 10px 5px rgba(204, 0, 0, 0.7)' },
+              },
+              fadeInOut: {
+                '0%, 100%': { opacity: '1' },
+                '50%': { opacity: '0.5' },
+              }
+            },
+            animation: {
+              confetti: 'confetti 5s ease-out forwards',
+              blink: 'blink 1s step-end infinite',
+              pulseRed: 'pulseRed 1.5s infinite',
+              fadeInOut: 'fadeInOut 3s ease-in-out',
+            }
+          }
+        }
+      }
+    </script>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+<script type="importmap">
+{
+  "imports": {
+    "react": "https://esm.sh/react@^19.2.3",
+    "react-dom/": "https://esm.sh/react-dom@^19.2.3/",
+    "react/": "https://esm.sh/react@^19.2.3/",
+    "react-router-dom": "https://esm.sh/react-router-dom@^7.11.0"
+  }
+}
+</script>
+<link rel="stylesheet" href="/index.css">
+</head>
+<body class="bg-gray-900 text-white antialiased">
+    <div id="root"></div>
+    <script type="module" src="/index.tsx"></script>
+</body>
+</html>
