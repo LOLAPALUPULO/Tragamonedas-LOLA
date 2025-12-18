@@ -9,15 +9,15 @@ import {
   REEL_SPIN_DURATION_MS,
   REEL_STOP_DELAY_MS,
   PRIZE_BEERS,
-  BET_AMOUNT,
-  WIN_CHANCE_PERCENTAGE, // Import new constant
+  WIN_CHANCE_PERCENTAGE,
 } from '../constants';
 import { SymbolName } from '../types';
 import { decrementPrize } from '../services/prizeService';
 
 interface SlotMachineProps {
-  credits: number; // Credits are now cosmetic, always high
-  onCreditsChange: (newCredits: number) => void; // Cosmetic, no actual deduction
+  // credits prop is no longer displayed but still accepted for API consistency if needed elsewhere
+  credits: number; 
+  onCreditsChange: (newCredits: number) => void; 
 }
 
 const SlotMachine: React.FC<SlotMachineProps> = ({ credits, onCreditsChange }) => {
@@ -30,6 +30,7 @@ const SlotMachine: React.FC<SlotMachineProps> = ({ credits, onCreditsChange }) =
   );
   const [winMessage, setWinMessage] = useState<string | null>(null);
   const [showConfetti, setShowConfetti] = useState(false);
+  const [spinsRemaining, setSpinsRemaining] = useState(5); // New state for remaining spins
   const spinTimeoutRefs = useRef<number[]>([]);
 
   // Checks for a win condition and identifies if it's a prize beer
@@ -48,9 +49,6 @@ const SlotMachine: React.FC<SlotMachineProps> = ({ credits, onCreditsChange }) =
   }, [reelResults, reelsStopped]);
 
   const handleSpinEnd = useCallback((index: number, finalSymbol: SymbolName) => {
-    // This handler is now mostly for the Reel component to signal its completion,
-    // the main win logic is in the useEffect below.
-    // It's crucial for the `reelsStopped` array to be updated correctly here.
     setReelsStopped((prev) => {
       const newStopped = [...prev];
       newStopped[index] = true;
@@ -64,9 +62,11 @@ const SlotMachine: React.FC<SlotMachineProps> = ({ credits, onCreditsChange }) =
   }, []);
 
   const spinReels = useCallback(() => {
-    if (isSpinning) { // Credits check removed as game is free play
+    if (isSpinning || spinsRemaining === 0) { // Disable if already spinning or no spins left
       return;
     }
+
+    setSpinsRemaining((prev) => prev - 1); // Decrement spins
 
     // Clear any previous timeouts to prevent interference
     spinTimeoutRefs.current.forEach(clearTimeout);
@@ -92,7 +92,6 @@ const SlotMachine: React.FC<SlotMachineProps> = ({ credits, onCreditsChange }) =
         .map(() => ALL_SYMBOLS[Math.floor(Math.random() * ALL_SYMBOLS.length)]);
       
       // Optional: Try to prevent accidental wins if not forced (though rare with many symbols)
-      // This is less critical since PRIZE_BEERS logic handles the "real" wins
       const firstSymbol = finalSymbols[0];
       const allMatch = finalSymbols.every(symbol => symbol === firstSymbol);
       if (allMatch && PRIZE_BEERS.includes(firstSymbol)) {
@@ -109,24 +108,19 @@ const SlotMachine: React.FC<SlotMachineProps> = ({ credits, onCreditsChange }) =
     for (let i = 0; i < NUM_REELS; i++) {
       const stopDelay = (i + 1) * REEL_STOP_DELAY_MS; // Staggered stop for visual effect
       spinTimeoutRefs.current.push(
-        // The actual result for Reel component's animation is set here
-        // The Reel will then handle its own internal animation and call handleSpinEnd when done
         setTimeout(() => {
           setReelResults((prev) => {
             const newResults = [...prev];
             newResults[i] = finalSymbols[i]; // Provide the target symbol for the reel
             return newResults;
           });
-          // Note: `setReelsStopped[i] = true` is now managed within `handleSpinEnd` 
-          // which is called by the `Reel` component when its animation fully completes.
         }, REEL_SPIN_DURATION_MS + stopDelay)
       );
     }
-  }, [isSpinning]); // Dependencies: only isSpinning
+  }, [isSpinning, spinsRemaining]);
 
   // Effect to handle win/loss outcome once all reels have stopped
   useEffect(() => {
-    // Only proceed if all reels have stopped AND a spin was initiated
     if (reelsStopped.every(Boolean) && isSpinning) {
       const { isMatch, prizeBeer } = checkWin();
 
@@ -142,7 +136,7 @@ const SlotMachine: React.FC<SlotMachineProps> = ({ credits, onCreditsChange }) =
             setShowConfetti(true);
           }
         } else {
-          // It's a match, but not a defined prize beer
+          // It's a match, but not a defined prize beer (no pintas)
           setWinMessage(`¡Felicidades! Tienes una combinación de ${reelResults[0].replace('_', ' ')}, pero no es una pinta.`);
           setShowConfetti(true);
         }
@@ -161,20 +155,16 @@ const SlotMachine: React.FC<SlotMachineProps> = ({ credits, onCreditsChange }) =
   }, []);
 
   return (
-    <div className="relative w-full max-w-sm md:max-w-md bg-gradient-to-br from-slotAccent to-slotBg p-4 rounded-xl shadow-2xl border-4 border-slotFrame">
+    <div className="relative w-full max-w-sm md:max-w-md bg-gradient-to-br from-slotAccent to-slotBg p-4 rounded-xl shadow-2xl border-4 border-slotFrame flex flex-col items-center">
       <Confetti show={showConfetti} />
 
-      {/* Top Bar - Credits, Level */}
-      <div className="flex justify-between items-center mb-4 p-2 bg-slotOffBlack rounded-lg shadow-inner border border-gray-700">
-        <div className="text-sm md:text-base font-display text-slotText leading-none">
-          CRÉDITOS
-          <span className="block text-xl md:text-3xl text-slotBet">
-            {credits.toLocaleString()}
+      {/* Top Bar - Spins Remaining */}
+      <div className="flex justify-center items-center mb-4 p-2 w-full bg-slotOffBlack rounded-lg shadow-inner border border-gray-700">
+        <div className="text-sm md:text-base font-display text-slotText leading-none text-center">
+          GIROS RESTANTES
+          <span className={`block text-xl md:text-3xl ${spinsRemaining === 0 ? 'text-red-500' : 'text-slotWin'}`}>
+            {spinsRemaining}
           </span>
-        </div>
-        <div className="text-sm md:text-base font-display text-slotText leading-none">
-          NIVEL
-          <span className="block text-xl md:text-3xl text-red-500">21</span>
         </div>
       </div>
 
@@ -192,38 +182,39 @@ const SlotMachine: React.FC<SlotMachineProps> = ({ credits, onCreditsChange }) =
         ))}
       </div>
 
-      {/* Bet & Win Display */}
-      <div className="flex justify-between items-center mb-6 px-4 py-2 bg-slotOffBlack rounded-lg shadow-inner border border-gray-700">
-        <div className="text-sm md:text-lg font-display text-slotText leading-none">
-          APUESTA
-          <span className="block text-xl md:text-3xl text-slotBet">
-            {BET_AMOUNT.toLocaleString()}
-          </span>
-        </div>
-        <div className="text-sm md:text-lg font-display text-slotText leading-none text-right">
-          GANANCIA
-          <span className={`block text-xl md:text-3xl ${winMessage ? 'text-slotWin' : 'text-gray-400'}`}>
-            {winMessage ? '...' : '0'}
-          </span>
-        </div>
-      </div>
-
       {/* Action Buttons */}
-      <div className="flex items-center justify-between mt-4">
-        <div className="flex space-x-2">
-          <Button variant="secondary" className="px-6 py-3 text-lg">PAGOS</Button>
-        </div>
+      <div className="flex items-center justify-center mt-4 relative"> {/* Centered buttons */}
         <Button
           variant="spin"
           onClick={spinReels}
-          disabled={isSpinning} // Disabled only if spinning, no credit check needed
+          disabled={isSpinning || spinsRemaining === 0}
         >
           SPIN
         </Button>
       </div>
 
-      {winMessage && (
-        <div className={`mt-6 p-3 text-center text-lg md:text-xl font-bold font-display rounded-lg shadow-lg ${showConfetti ? 'bg-slotWin text-slotOffBlack' : 'bg-gray-800 text-slotText'}`}>
+      {/* Messages and Recharge button */}
+      {spinsRemaining === 0 && !isSpinning && (
+        <div className="flex flex-col items-center w-full">
+          <div className="mt-6 p-3 text-center text-lg md:text-xl font-bold font-display rounded-lg shadow-lg bg-red-800 text-white w-full">
+            ¡No tienes giros! Recarga para seguir jugando.
+          </div>
+          <Button
+            variant="admin" 
+            onClick={() => {
+              setSpinsRemaining(5);
+              setWinMessage(null); 
+              setShowConfetti(false); 
+            }}
+            fullWidth={true}
+            className="mt-4 bg-yellow-500 hover:bg-yellow-600 text-black" 
+          >
+            RECARGAR GIROS
+          </Button>
+        </div>
+      )}
+      {winMessage && !isSpinning && ( 
+        <div className={`mt-6 p-3 text-center text-lg md:text-xl font-bold font-display rounded-lg shadow-lg ${showConfetti ? 'bg-slotWin text-slotOffBlack' : 'bg-gray-800 text-slotText'} w-full`}>
           {winMessage}
         </div>
       )}

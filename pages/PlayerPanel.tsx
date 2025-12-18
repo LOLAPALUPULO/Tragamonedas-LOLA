@@ -1,20 +1,18 @@
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useCallback } from 'react';
 import SlotMachine from '../components/SlotMachine';
-// No longer import INITIAL_CREDITS as it's effectively infinite
 
 const PlayerPanel: React.FC = () => {
-  // Set credits to a very high number to simulate infinite play (no payment)
+  // Credits are now purely cosmetic and not displayed in SlotMachine. 
+  // We can keep it high or even remove it if SlotMachine didn't expect the prop.
+  // For consistency, pass a dummy high value.
   const [credits, setCredits] = useState<number>(999999999);
 
-  // onCreditsChange is now cosmetic, as credits are infinite and not managed by storage
+  // This function is still passed but effectively does nothing, as credits are not managed.
   const onCreditsChange = useCallback((newCredits: number) => {
-    // We can still update the state if we want to show a 'deduction' but not persist it
-    // For free play, we simply don't do anything with the newCredits or keep them high
-    setCredits(999999999); // Always reset to max for visual consistency
+    // No actual credit management needed for this version of the game.
+    setCredits(999999999); // Ensure credits always appear high if they were ever re-introduced.
   }, []);
-
-  // Removed useEffect for localStorage credit storage as credits are now static/infinite.
 
   return (
     <div className="w-full h-full flex items-center justify-center p-4">

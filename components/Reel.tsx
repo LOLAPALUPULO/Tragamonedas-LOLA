@@ -24,24 +24,28 @@ const Reel: React.FC<ReelProps> = ({
   const [transitionStyle, setTransitionStyle] = useState('none'); // Manages CSS transition property
   const stopAnimationRef = useRef<number | null>(null); // To store timeout ID
 
-  // Genera un conjunto inicial de símbolos para cuando el rodillo no esté girando
+  // This useEffect handles the very initial display of symbols when the component mounts
+  // and is not spinning. It ensures 3 symbols are visible with the 'result' symbol in the middle.
   useEffect(() => {
     if (!spinning && displaySymbols.length === 0) {
-      const initialSymbols: SymbolName[] = [];
-      let lastSymbol: SymbolName | undefined;
-      for (let i = 0; i < ALL_SYMBOLS.length * 5; i++) { // Suficientes para que se vea un bucle inicial
-        let newSymbol: SymbolName;
-        do {
-          newSymbol = ALL_SYMBOLS[Math.floor(Math.random() * ALL_SYMBOLS.length)];
-        } while (newSymbol === lastSymbol && ALL_SYMBOLS.length > 1);
-        initialSymbols.push(newSymbol);
-        lastSymbol = newSymbol;
+      // Generate a default 3-symbol sequence to ensure the reel is visually full
+      let tempResult = result; // Use the initial result passed from parent (ALL_SYMBOLS[0])
+      
+      let symbolAbove = ALL_SYMBOLS[Math.floor(Math.random() * ALL_SYMBOLS.length)];
+      while (symbolAbove === tempResult && ALL_SYMBOLS.length > 1) {
+          symbolAbove = ALL_SYMBOLS[Math.floor(Math.random() * ALL_SYMBOLS.length)];
       }
-      setDisplaySymbols(initialSymbols);
-      // Intentar centrar el primer símbolo si es el estado inicial
-      setCurrentOffset(SYMBOL_HEIGHT * (1 - 0)); 
+      let symbolBelow = ALL_SYMBOLS[Math.floor(Math.random() * ALL_SYMBOLS.length)];
+      while (symbolBelow === tempResult && ALL_SYMBOLS.length > 1) {
+          symbolBelow = ALL_SYMBOLS[Math.floor(Math.random() * ALL_SYMBOLS.length)];
+      }
+      // The initial state for `displaySymbols` should be just these three to control positioning easily
+      setDisplaySymbols([symbolAbove, tempResult, symbolBelow]);
+      // We want the `tempResult` (index 1) to be centered. This means its top should be at SYMBOL_HEIGHT.
+      // So, the top of the symbol at index 0 (`symbolAbove`) should be at 0.
+      setCurrentOffset(0); // This places symbolAbove at Y=0, tempResult at Y=100 (centered)
     }
-  }, [spinning, displaySymbols.length]);
+  }, [spinning, displaySymbols.length, result]); // Dependencies, important for re-evaluation
 
 
   useEffect(() => {
@@ -82,26 +86,26 @@ const Reel: React.FC<ReelProps> = ({
       const newDisplaySymbols = [...spinSymbols, ...stoppingSequence];
       setDisplaySymbols(newDisplaySymbols);
 
-      // El símbolo 'result' se encuentra ahora en este índice preciso
-      const predictableResultIndex = spinSymbols.length + 1; // index of 'result' in newDisplaySymbols
+      // Calcular el desplazamiento objetivo para posicionar `result` (que está en `stoppingSequence[1]`)
+      // en el centro del visor. Esto significa que `symbolAbove` (que está en `stoppingSequence[0]`)
+      // debe estar alineado con la parte superior del visor (y=0).
+      // El índice de `symbolAbove` en la lista `newDisplaySymbols` es `spinSymbols.length`.
+      const targetIndexForTop = spinSymbols.length; 
+      const targetOffset = -(targetIndexForTop * SYMBOL_HEIGHT);
 
       // Resetear la transición para el salto instantáneo
       setTransitionStyle('none');
       // Saltar muy arriba para iniciar la ilusión de giro rápido.
-      // El valor negativo grande asegura que haya muchos símbolos antes de la parada.
-      setCurrentOffset(-((predictableResultIndex + 5) * SYMBOL_HEIGHT)); 
+      // Restamos una gran cantidad de altura para que haya muchos símbolos antes de la parada.
+      setCurrentOffset(targetOffset - (ALL_SYMBOLS.length * 5 * SYMBOL_HEIGHT)); 
 
       window.setTimeout(() => {
         // Aplicar la transición de frenado: inicio rápido y desaceleración gradual (similar a ease-out-expo)
         setTransitionStyle(`transform ${spinDuration}ms cubic-bezier(0.19, 1, 0.22, 1)`);
 
-        // Calcular el desplazamiento objetivo para centrar el símbolo 'result' (en predictableResultIndex)
-        // El borde superior del símbolo en predictableResultIndex debe estar a 1*SYMBOL_HEIGHT del borde superior de la ventana visible.
-        const targetOffset = SYMBOL_HEIGHT * (1 - predictableResultIndex);
-
         // Aplicar un ligero "overshoot" (pasarse un poco) para un frenado más natural y con rebote
         const overshootAmount = SYMBOL_HEIGHT / 4; // Overshoot en 1/4 de la altura del símbolo
-        const overshootOffset = targetOffset - overshootAmount; // Ir un poco más allá del objetivo
+        const overshootOffset = targetOffset + overshootAmount; // Ir un poco más allá del objetivo (hacia abajo)
 
         // Iniciar la animación principal de frenado hacia el punto de overshoot
         setCurrentOffset(overshootOffset);
@@ -126,19 +130,9 @@ const Reel: React.FC<ReelProps> = ({
       }, 50); // Pequeño retraso inicial para aplicar el `transition: none` antes de iniciar la animación
 
     } else {
-      // Cuando no está girando, asegurar que no hay transición activa para actualizaciones inmediatas
+      // Cuando no está girando, asegurar que no hay transición activa para actualizaciones inmediatas.
+      // `currentOffset` debe estar en su posición final animada cuando `spinning` se vuelve falso.
       setTransitionStyle('none');
-      // Posicionar el rodillo para mostrar el último resultado centrado
-      // Utilizamos `indexOf` ya que la lista `displaySymbols` se actualiza con cada giro
-      const resultIndex = displaySymbols.indexOf(result);
-      if (resultIndex !== -1) {
-          // Calcular el desplazamiento para centrar el símbolo resultante
-          const finalOffset = SYMBOL_HEIGHT * (1 - resultIndex);
-          setCurrentOffset(finalOffset);
-      } else if (displaySymbols.length > 0) {
-          // Si por alguna razón el resultado no se encuentra (ej. primer render), centrar el primer símbolo disponible
-          setCurrentOffset(SYMBOL_HEIGHT * (1 - 0)); 
-      }
     }
 
     // Limpiar el timeout si el componente se desmonta o el estado de giro cambia
@@ -147,7 +141,7 @@ const Reel: React.FC<ReelProps> = ({
         clearTimeout(stopAnimationRef.current);
       }
     };
-  }, [spinning, result, index, onSpinEnd, spinDuration]); // Se agregó 'result' como dependencia para la generación de símbolos en cada spin
+  }, [spinning, result, index, onSpinEnd, spinDuration, displaySymbols.length]); 
 
   const reelStyle: React.CSSProperties = {
     transform: `translateY(${currentOffset}px)`,
@@ -158,8 +152,6 @@ const Reel: React.FC<ReelProps> = ({
     <div
       className="relative w-full h-[300px] overflow-hidden rounded-xl border-4 border-slotFrame shadow-inner"
       style={{
-        // Replaced tailwind config access with hardcoded color values.
-        // Assuming slotReelBg is a dark grey like #1a1a1a.
         background: `repeating-linear-gradient(-45deg, #1a1a1a 0%, #1a1a1a 50%, #333 100%)`, // Subtle dark background for reels
       }}
     >
